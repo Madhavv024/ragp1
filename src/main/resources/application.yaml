@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: enterprise-rag
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/enterprise_rag
+    username: postgres
+    password: password
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+  ai:
+    model:
+      chat: openai
+      embedding: ollama
+
+    openai:
+      base-url: https://openrouter.ai/api/v1
+      api-key: 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
+      chat:
+        options:
+          model: dots-studio/dots-3-note-preview:free
+          temperature: 0.5
+
+
+    ollama:
+      base-url: http://localhost:11434
+      embedding:
+        model: nomic-embed-text
+
+    vectorstore:
+      pgvector:
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimensions: 768
+        initialize-schema: true
+
+logging:
+  level:
+    com.openai: DEBUG
+    com.openai.core: DEBUG
+    org.springframework.ai.openai: DEBUG
