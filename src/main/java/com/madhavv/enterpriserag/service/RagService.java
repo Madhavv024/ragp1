@@ -1,5 +1,6 @@
 package com.madhavv.enterpriserag.service;
 
+import com.madhavv.enterpriserag.dto.RagResponse;
 import com.madhavv.enterpriserag.dto.SearchResult;
 import org.springframework.stereotype.Service;
 
@@ -12,20 +13,22 @@ public class RagService {
     private final SearchService searchService;
     private final LlmService llmService;
 
-    public RagService(SearchService searchService,
-                      LlmService llmService) {
+    public RagService(SearchService searchService,LlmService llmService) {
         this.searchService = searchService;
         this.llmService = llmService;
     }
 
-    public String ask(String question) {
+    public RagResponse ask(String question) {
 
         // 1. Retrieve relevant document chunks
         List<SearchResult> results = searchService.search(question);
 
         // 2. No documents found
         if (results == null || results.isEmpty()) {
-            return "I could not find the answer in the provided documents.";
+            return new RagResponse(
+                    "I could not find the answer in the provided documents.",
+                    List.of()
+            );
         }
 
         // 3. Build context from retrieved chunks
@@ -58,6 +61,17 @@ public class RagService {
                 """.formatted(context, question);
 
         // 5. Send grounded prompt to DeepSeek
-        return llmService.ask(prompt);
+        String answer = llmService.ask(prompt);
+
+        List<RagResponse.Source> sources = results.stream()
+                .map(result -> new RagResponse.Source(
+                        result.filename(),
+                        result.score(),
+                        result.documentId(),
+                        result.chunkIndex()
+                ))
+                .toList();
+
+        return new RagResponse(answer, sources);
     }
 }

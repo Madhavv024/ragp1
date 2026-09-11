@@ -18,7 +18,7 @@ spring:
 
     openai:
       base-url: https://openrouter.ai/api/v1
-      api-key: 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
+      api-key:
       chat:
         options:
           model: dots-studio/dots-3-note-preview:free
@@ -42,3 +42,8 @@ logging:
     com.openai: DEBUG
     com.openai.core: DEBUG
     org.springframework.ai.openai: DEBUG
+
+confluence:
+  base-url: https://gmservices033.atlassian.net/wiki
+  email: gmservices033@gmail.com
+  api-token:

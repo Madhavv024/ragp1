@@ -1,12 +1,14 @@
 package com.madhavv.enterpriserag.service;
 
 import org.springframework.ai.document.Document;
+import org.springframework.ai.reader.tika.TikaDocumentReader;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -33,17 +35,20 @@ public class DocumentIngestionService {
 
         UUID documentId = UUID.randomUUID();
 
-        String content = new String(file.getBytes());
+        TikaDocumentReader reader = new TikaDocumentReader(file.getResource());
 
-        Map<String, Object> metadata = Map.of(
-                "documentId", documentId.toString(),
-                "filename", file.getOriginalFilename(),
-                "contentType", file.getContentType()
+        List<Document> documents = reader.get();
+
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("documentId", documentId.toString());
+        metadata.put("filename", file.getOriginalFilename());
+        metadata.put("contentType", file.getContentType());
+
+        documents.forEach(document ->
+                document.getMetadata().putAll(metadata)
         );
 
-        Document document = new Document(content, metadata);
-
-        List<Document> chunks = textSplitter.apply(List.of(document));
+        List<Document> chunks = textSplitter.apply(documents);
 
         for (int i = 0; i < chunks.size(); i++) {
             chunks.get(i).getMetadata().put("chunkIndex", i);
