@@ -1,11 +1,10 @@
 spring:
   application:
     name: enterprise-rag
-
   datasource:
     url: jdbc:postgresql://localhost:5432/enterprise_rag
     username: postgres
-    password: password
+    password:
 
   jpa:
     hibernate:
@@ -43,7 +42,21 @@ logging:
     com.openai.core: DEBUG
     org.springframework.ai.openai: DEBUG
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
 confluence:
   base-url: https://gmservices033.atlassian.net/wiki
   email: gmservices033@gmail.com
   api-token:
+rag:
+  pipeline:
+    chunking: TokenTextSplitter
+    embedding-model: nomic-embed-text
+    vector-store: pgvector
+    generation-model: dots-studio/dots-3-note-preview:free

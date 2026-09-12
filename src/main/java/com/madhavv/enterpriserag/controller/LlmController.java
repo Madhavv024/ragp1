@@ -1,7 +1,9 @@
 package com.madhavv.enterpriserag.controller;
 
+import com.madhavv.enterpriserag.dto.RagDebugResponse;
 import com.madhavv.enterpriserag.dto.RagRequest;
 import com.madhavv.enterpriserag.dto.RagResponse;
+import com.madhavv.enterpriserag.dto.SearchRequestDto;
 import com.madhavv.enterpriserag.service.LlmService;
 import com.madhavv.enterpriserag.service.RagService;
 import org.springframework.http.ResponseEntity;
@@ -48,7 +50,11 @@ public class LlmController {
     }
 
     @PostMapping("/ask")
-    public ResponseEntity<RagResponse> ask(@RequestBody RagRequest request) {
-        return ResponseEntity.ok(ragService.ask(request.question()));
+    public ResponseEntity<RagResponse> ask(@RequestBody SearchRequestDto request) {
+        return ResponseEntity.ok(ragService.ask(request));
+    }
+    @PostMapping("/debug")
+    public ResponseEntity<RagDebugResponse> debug(@RequestBody SearchRequestDto request) {
+        return ResponseEntity.ok(ragService.debug(request));
     }
 }

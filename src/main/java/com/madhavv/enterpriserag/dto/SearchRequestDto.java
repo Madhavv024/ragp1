@@ -1,6 +1,6 @@
 package com.madhavv.enterpriserag.dto;
 
-public record RagRequest(
+public record SearchRequestDto(
         String question,
         String sourceType
 ) {

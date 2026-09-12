@@ -2,6 +2,8 @@ package com.madhavv.enterpriserag.service;
 
 import com.madhavv.enterpriserag.dto.SearchResult;
 import org.springframework.ai.document.Document;
+
+import com.madhavv.enterpriserag.dto.SearchRequestDto;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
@@ -17,12 +19,19 @@ public class SearchService {
         this.vectorStore = vectorStore;
     }
 
-    public List<SearchResult> search(String query) {
+    public List<SearchResult> search(SearchRequestDto searchRequestDto) {
 
-        SearchRequest searchRequest = SearchRequest.builder()
-                .query(query)
-                .topK(5)
-                .build();
+        SearchRequest.Builder builder = SearchRequest.builder()
+                .query(searchRequestDto.question())
+                .topK(5);
+
+        String sourceType = searchRequestDto.sourceType();
+        if (sourceType != null && !sourceType.equalsIgnoreCase("ALL")) {
+            builder.filterExpression("sourceType == '" + sourceType + "'");
+        }
+
+        SearchRequest searchRequest = builder.build();
+
         List<Document> documents = vectorStore.similaritySearch(searchRequest);
 
         /*System.out.println("Query: " + query);
