@@ -7,6 +7,7 @@ import com.madhavv.enterpriserag.dto.SearchResult;
 import com.madhavv.enterpriserag.repository.RagQueryLogRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -73,7 +74,7 @@ public class RagService {
                 """.formatted(context, question.question());
 
             // 5. Send grounded prompt to DeepSeek
-            String answer = llmService.ask(prompt);
+            String answer = llmService.ask(prompt, question.model());
 
             List<RagResponse.Source> sources = results.stream()
                     .map(result -> new RagResponse.Source(
@@ -81,7 +82,8 @@ public class RagService {
                             result.score(),
                             result.documentId(),
                             result.chunkIndex()
-                    ))
+                    )).sorted(Comparator.comparing(entity -> entity.similarity(), Comparator.reverseOrder()))
+                    .limit(3)
                     .toList();
 
             ragQueryLogRepository.save(
@@ -107,8 +109,6 @@ public class RagService {
 
             throw e;
         }
-
-        // 1. Retrieve relevant document chunks
 
     }
 
@@ -165,7 +165,7 @@ public class RagService {
                 """.formatted(context, question.question());
 
         // 5. Send grounded prompt to DeepSeek
-        answer = llmService.ask(prompt);
+        answer = llmService.ask(prompt, question.model());
 
         List<RagResponse.Source> sources = results.stream()
                 .map(result -> new RagResponse.Source(

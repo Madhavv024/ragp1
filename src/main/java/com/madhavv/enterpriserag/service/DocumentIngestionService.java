@@ -1,5 +1,6 @@
 package com.madhavv.enterpriserag.service;
 
+import com.madhavv.enterpriserag.dto.IngestionResult;
 import com.madhavv.enterpriserag.repository.RagActivityLogRepository;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.reader.tika.TikaDocumentReader;

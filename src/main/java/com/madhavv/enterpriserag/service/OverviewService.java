@@ -54,7 +54,7 @@ public class OverviewService {
                 pipelineProperties.chunking(),
                 pipelineProperties.embeddingModel(),
                 pipelineProperties.vectorStore(),
-                pipelineProperties.generationModel()
+                pipelineProperties.generationProvider()
         );
 
         List<OverviewResponse.Activity> recentActivity = ragActivityLogRepository.findRecent(10)

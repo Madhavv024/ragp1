@@ -1,4 +1,4 @@
-package com.madhavv.enterpriserag.service;
+package com.madhavv.enterpriserag.dto;
 
 public record IngestionResult(
         String documentId,

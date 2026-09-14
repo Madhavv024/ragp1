@@ -5,9 +5,12 @@ import com.madhavv.enterpriserag.dto.RagRequest;
 import com.madhavv.enterpriserag.dto.RagResponse;
 import com.madhavv.enterpriserag.dto.SearchRequestDto;
 import com.madhavv.enterpriserag.service.LlmService;
+import com.madhavv.enterpriserag.service.OpenRouterService;
 import com.madhavv.enterpriserag.service.RagService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 import java.util.Map;
 
 /*
@@ -38,15 +41,17 @@ public class LlmController {
 
     private final LlmService llmService;
     private final RagService ragService;
+    private final OpenRouterService openRouterService;
 
-    public LlmController(LlmService llmService,  RagService ragService) {
+    public LlmController(LlmService llmService, RagService ragService, OpenRouterService openRouterService) {
         this.llmService = llmService;
         this.ragService = ragService;
+        this.openRouterService = openRouterService;
     }
 
     @PostMapping("/test")
     public String test(@RequestBody Map<String, String> request) {
-        return llmService.ask(request.get("question"));
+        return llmService.ask(request.get("question"),  request.get("model"));
     }
 
     @PostMapping("/ask")
@@ -56,5 +61,10 @@ public class LlmController {
     @PostMapping("/debug")
     public ResponseEntity<RagDebugResponse> debug(@RequestBody SearchRequestDto request) {
         return ResponseEntity.ok(ragService.debug(request));
+    }
+
+    @GetMapping("/models")
+    public ResponseEntity<List<OpenRouterService.LlmModelDto>> getModels() {
+        return ResponseEntity.ok(openRouterService.getModels());
     }
 }

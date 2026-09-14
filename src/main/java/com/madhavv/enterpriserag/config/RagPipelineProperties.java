@@ -7,6 +7,6 @@ public record RagPipelineProperties(
         String chunking,
         String embeddingModel,
         String vectorStore,
-        String generationModel
+        String generationProvider
 ) {
 }

@@ -4,7 +4,7 @@ import com.madhavv.enterpriserag.dto.ConfluencePage;
 import com.madhavv.enterpriserag.service.ConfluenceClient;
 import com.madhavv.enterpriserag.service.ConfluenceIngestionService;
 import com.madhavv.enterpriserag.service.DocumentIngestionService;
-import com.madhavv.enterpriserag.service.IngestionResult;
+import com.madhavv.enterpriserag.dto.IngestionResult;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

@@ -2,6 +2,7 @@ package com.madhavv.enterpriserag.dto;
 
 public record SearchRequestDto(
         String question,
-        String sourceType
+        String sourceType,
+        String model
 ) {
 }

@@ -2,9 +2,9 @@ spring:
   application:
     name: enterprise-rag
   datasource:
-    url: jdbc:postgresql://localhost:5432/enterprise_rag
-    username: postgres
-    password:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/enterprise_rag}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:password}
 
   jpa:
     hibernate:
@@ -17,7 +17,7 @@ spring:
 
     openai:
       base-url: https://openrouter.ai/api/v1
-      api-key:
+      api-key: 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
       chat:
         options:
           model: dots-studio/dots-3-note-preview:free
@@ -53,10 +53,14 @@ management:
 confluence:
   base-url: https://gmservices033.atlassian.net/wiki
   email: gmservices033@gmail.com
-  api-token:
+  api-token: ATATT3xFfGF0IUZhRhvr6ZY89Tgua5df3rog4mZedxG2-lGfCQL9u5jF8fTvT4S6BAXzTWUVo_33aYvmQHyl8JlNY4neGCZZfGWoLDklZwMvQSJ5Mfeod5h4b8HQx9pSYI-Hb4e48CNQc6GnXqzcBv8qTdC8k604ee6inoXGEIBZpYHUpxi-Nhc=B4D7D9A9
 rag:
   pipeline:
     chunking: TokenTextSplitter
     embedding-model: nomic-embed-text
     vector-store: pgvector
-    generation-model: dots-studio/dots-3-note-preview:free
+    generation-provider: OpenRouter
+
+openrouter:
+  base-url: https://openrouter.ai/api/v1
+  api-key: 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
