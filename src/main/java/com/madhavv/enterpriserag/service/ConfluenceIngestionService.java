@@ -1,15 +1,21 @@
 package com.madhavv.enterpriserag.service;
 
 import com.madhavv.enterpriserag.dto.ConfluencePage;
+import com.madhavv.enterpriserag.dto.ConfluencePageSummary;
+import com.madhavv.enterpriserag.dto.ConfluenceTreeIngestionResult;
+import com.madhavv.enterpriserag.repository.ConfluenceVectorRepository;
 import com.madhavv.enterpriserag.repository.RagActivityLogRepository;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.net.URI;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class ConfluenceIngestionService {
@@ -19,16 +25,17 @@ public class ConfluenceIngestionService {
     private final VectorStore vectorStore;
     private final TokenTextSplitter textSplitter;
     private final RagActivityLogRepository ragActivityLogRepository;
+    private final ConfluenceVectorRepository confluenceVectorRepository;
+    private final ConfluenceUrlParser confluenceUrlParser;
 
-    public ConfluenceIngestionService(
-            ConfluenceClient confluenceClient,
-            ConfluenceTextExtractor textExtractor,
-            VectorStore vectorStore, RagActivityLogRepository ragActivityLogRepository) {
+    public ConfluenceIngestionService(ConfluenceClient confluenceClient, ConfluenceTextExtractor textExtractor, VectorStore vectorStore, RagActivityLogRepository ragActivityLogRepository, ConfluenceVectorRepository confluenceVectorRepository, ConfluenceUrlParser confluenceUrlParser) {
 
         this.confluenceClient = confluenceClient;
         this.textExtractor = textExtractor;
         this.vectorStore = vectorStore;
         this.ragActivityLogRepository = ragActivityLogRepository;
+        this.confluenceVectorRepository = confluenceVectorRepository;
+        this.confluenceUrlParser = confluenceUrlParser;
 
         this.textSplitter = TokenTextSplitter.builder()
                 .withChunkSize(400)
@@ -42,10 +49,12 @@ public class ConfluenceIngestionService {
     public int ingest(String pageId) {
 
         ConfluencePage page = confluenceClient.getPage(pageId);
+        confluenceVectorRepository.deleteByPageId(pageId);
 
         String content = textExtractor.extract(page.body());
 
         UUID documentId = UUID.randomUUID();
+        OffsetDateTime ingestedAt = OffsetDateTime.now(ZoneOffset.UTC);
 
         Map<String, Object> metadata = Map.of(
                 "documentId", documentId.toString(),
@@ -53,7 +62,8 @@ public class ConfluenceIngestionService {
                 "contentType", "confluence",
                 "sourceType", "CONFLUENCE",
                 "pageId", page.id(),
-                "confluenceUrl", page.webUrl()
+                "confluenceUrl", page.webUrl(),
+                "ingestedAt", ingestedAt.toString()
         );
 
         Document document = new Document(content, metadata);
@@ -74,5 +84,128 @@ public class ConfluenceIngestionService {
         );
 
         return chunks.size();
+    }
+
+    public ConfluenceTreeIngestionResult ingestPageTree(String rootPageId) {
+
+        Set<String> visitedPageIds = new HashSet<>();
+        List<ConfluencePageSummary> pages = new ArrayList<>();
+
+        collectPageTree(
+                rootPageId,
+                visitedPageIds,
+                pages
+        );
+
+        List<ConfluenceTreeIngestionResult.PageResult> successfulPages =
+                new ArrayList<>();
+
+        List<ConfluenceTreeIngestionResult.FailedPage> failedPages =
+                new ArrayList<>();
+
+        int totalChunks = 0;
+
+        for (ConfluencePageSummary page : pages) {
+
+            try {
+                int chunks = ingest(page.id());
+                successfulPages.add(new ConfluenceTreeIngestionResult.PageResult(page.id(), page.title(), chunks, "INGESTED"));
+                totalChunks += chunks;
+
+            } catch (Exception ex) {
+
+                failedPages.add(
+                        new ConfluenceTreeIngestionResult.FailedPage(
+                                page.id(),
+                                page.title(),
+                                ex.getMessage() != null
+                                        ? ex.getMessage()
+                                        : "Failed to ingest page"
+                        )
+                );
+            }
+        }
+
+        return new ConfluenceTreeIngestionResult(rootPageId, pages.size(), successfulPages.size(), failedPages.size(), totalChunks, successfulPages, failedPages);
+    }
+
+    private void collectPageTree(String pageId,Set<String> visitedPageIds,List<ConfluencePageSummary> pages) {
+        if (!visitedPageIds.add(pageId)) {
+            return;
+        }
+        ConfluencePage page = confluenceClient.getPage(pageId);
+        pages.add(new ConfluencePageSummary(page.id(),page.title()));
+        List<ConfluencePageSummary> children =confluenceClient.getChildPages(pageId);
+        for (ConfluencePageSummary child : children) {
+            collectPageTree(child.id(), visitedPageIds, pages);
+        }
+    }
+
+    public ConfluenceTreeIngestionResult ingestFromUrl(String url) {
+
+        ConfluenceUrlParser.ConfluenceUrl parsed = confluenceUrlParser.parse(url);
+
+        return switch (parsed.type()) {
+            case PAGE ->
+                    ingestPageTree(parsed.pageId());
+            case SPACE ->
+                    ingestSpace(parsed.spaceKey());
+        };
+    }
+
+    private ConfluenceTreeIngestionResult ingestSpace(String spaceKey) {
+
+        var space = confluenceClient.getSpaceByKey(spaceKey);
+
+        List<ConfluencePageSummary> pages = confluenceClient.getPagesInSpace(space.id());
+
+        List<ConfluenceTreeIngestionResult.PageResult> successfulPages =
+                new ArrayList<>();
+
+        List<ConfluenceTreeIngestionResult.FailedPage> failedPages =
+                new ArrayList<>();
+
+        int totalChunks = 0;
+
+        for (ConfluencePageSummary page : pages) {
+
+            try {
+
+                int chunks = ingest(page.id());
+
+                successfulPages.add(
+                        new ConfluenceTreeIngestionResult.PageResult(
+                                page.id(),
+                                page.title(),
+                                chunks,
+                                "INGESTED"
+                        )
+                );
+
+                totalChunks += chunks;
+
+            } catch (Exception ex) {
+
+                failedPages.add(
+                        new ConfluenceTreeIngestionResult.FailedPage(
+                                page.id(),
+                                page.title(),
+                                ex.getMessage() != null
+                                        ? ex.getMessage()
+                                        : "Failed to ingest page"
+                        )
+                );
+            }
+        }
+
+        return new ConfluenceTreeIngestionResult(
+                "SPACE:" + space.id(),
+                pages.size(),
+                successfulPages.size(),
+                failedPages.size(),
+                totalChunks,
+                successfulPages,
+                failedPages
+        );
     }
 }

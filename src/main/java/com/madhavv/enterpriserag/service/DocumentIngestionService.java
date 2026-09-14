@@ -1,5 +1,6 @@
 package com.madhavv.enterpriserag.service;
 
+import com.madhavv.enterpriserag.dto.FolderIngestionResult;
 import com.madhavv.enterpriserag.dto.IngestionResult;
 import com.madhavv.enterpriserag.repository.RagActivityLogRepository;
 import org.springframework.ai.document.Document;
@@ -10,10 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 public class DocumentIngestionService {
@@ -82,6 +80,63 @@ public class DocumentIngestionService {
                 documentId.toString(),
                 file.getOriginalFilename(),
                 chunks.size()
+        );
+    }
+
+    public FolderIngestionResult ingestFolder(List<MultipartFile> files) {
+
+        if (files == null || files.isEmpty()) {
+            return new FolderIngestionResult(
+                    0,
+                    0,
+                    0,
+                    List.of(),
+                    List.of()
+            );
+        }
+
+        List<IngestionResult> successfulDocuments = new ArrayList<>();
+        List<FolderIngestionResult.FailedFile> failedFiles = new ArrayList<>();
+
+        for (MultipartFile file : files) {
+
+            String filename = file != null
+                    ? file.getOriginalFilename()
+                    : "unknown";
+
+            if (file == null || file.isEmpty()) {
+                failedFiles.add(
+                        new FolderIngestionResult.FailedFile(
+                                filename,
+                                "File is empty"
+                        )
+                );
+                continue;
+            }
+
+            try {
+                IngestionResult result = ingest(file);
+                successfulDocuments.add(result);
+
+            } catch (Exception ex) {
+
+                failedFiles.add(
+                        new FolderIngestionResult.FailedFile(
+                                filename,
+                                ex.getMessage() != null
+                                        ? ex.getMessage()
+                                        : "Failed to ingest file"
+                        )
+                );
+            }
+        }
+
+        return new FolderIngestionResult(
+                files.size(),
+                successfulDocuments.size(),
+                failedFiles.size(),
+                successfulDocuments,
+                failedFiles
         );
     }
 }
