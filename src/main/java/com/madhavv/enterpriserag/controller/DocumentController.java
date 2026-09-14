@@ -1,16 +1,16 @@
 package com.madhavv.enterpriserag.controller;
 
-import com.madhavv.enterpriserag.dto.ConfluencePage;
+import com.madhavv.enterpriserag.dto.*;
 import com.madhavv.enterpriserag.service.ConfluenceClient;
 import com.madhavv.enterpriserag.service.ConfluenceIngestionService;
 import com.madhavv.enterpriserag.service.DocumentIngestionService;
-import com.madhavv.enterpriserag.dto.IngestionResult;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -64,5 +64,52 @@ public class DocumentController {
                         "chunksCreated", String.valueOf(result.chunksCreated())
                 )
         );
+    }
+
+    @PostMapping("/upload-folder")
+    public ResponseEntity<FolderIngestionResult> uploadFolder(
+            @RequestParam("files") List<MultipartFile> files) {
+
+        FolderIngestionResult result = documentIngestionService.ingestFolder(files);
+
+        HttpStatus status = result.failed() == result.totalFiles() ? HttpStatus.BAD_REQUEST : HttpStatus.CREATED;
+
+        return ResponseEntity.status(status).body(result);
+    }
+
+    @GetMapping("/confluence/space/{spaceId}/pages")
+    public ResponseEntity<List<ConfluencePageSummary>> getSpacePages(
+            @PathVariable String spaceId) {
+
+        return ResponseEntity.ok(
+                confluenceClient.getPagesInSpace(spaceId)
+        );
+    }
+
+    @PostMapping("/confluence/page-tree/{pageId}/ingest")
+    public ResponseEntity<ConfluenceTreeIngestionResult> ingestPageTree(
+            @PathVariable String pageId) {
+
+        ConfluenceTreeIngestionResult result = confluenceIngestionService.ingestPageTree(pageId);
+
+        HttpStatus status = result.failed() == result.totalPages()
+                ? HttpStatus.BAD_REQUEST
+                : HttpStatus.CREATED;
+
+        return ResponseEntity.status(status).body(result);
+    }
+
+    @PostMapping("/confluence/ingest")
+    public ResponseEntity<ConfluenceTreeIngestionResult> ingestConfluence(
+            @RequestBody ConfluenceIngestionRequest request) {
+
+        ConfluenceTreeIngestionResult result =
+                confluenceIngestionService.ingestFromUrl(request.url());
+
+        HttpStatus status = result.failed() == result.totalPages()
+                ? HttpStatus.BAD_REQUEST
+                : HttpStatus.CREATED;
+
+        return ResponseEntity.status(status).body(result);
     }
 }
