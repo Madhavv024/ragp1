@@ -1,6 +1,5 @@
 package com.madhavv.enterpriserag.service;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
@@ -18,20 +17,7 @@ public class ConfluenceUrlParser {
             "^/wiki/spaces/([^/]+)/?$"
     );
 
-    private final String expectedHost;
-
-    public ConfluenceUrlParser(
-            @Value("${confluence.base-url}") String baseUrl) {
-
-        URI baseUri = URI.create(baseUrl);
-
-        if (baseUri.getHost() == null || baseUri.getHost().isBlank()) {
-            throw new IllegalArgumentException(
-                    "Invalid confluence.base-url"
-            );
-        }
-
-        this.expectedHost = baseUri.getHost();
+    public ConfluenceUrlParser() {
     }
 
     public ConfluenceUrl parse(String url) {
@@ -52,7 +38,6 @@ public class ConfluenceUrlParser {
             );
         }
 
-        validateHost(uri);
         validateScheme(uri);
 
         String path = uri.getPath();
@@ -70,7 +55,8 @@ public class ConfluenceUrlParser {
             return new ConfluenceUrl(
                     Type.PAGE,
                     pageMatcher.group(1),
-                    pageMatcher.group(2)
+                    pageMatcher.group(2),
+                    getBaseUrl(uri)
             );
         }
 
@@ -81,27 +67,16 @@ public class ConfluenceUrlParser {
             return new ConfluenceUrl(
                     Type.SPACE,
                     spaceMatcher.group(1),
-                    null
+                    null,
+                    getBaseUrl(uri)
             );
         }
 
-        throw new IllegalArgumentException(
-                "Unsupported Confluence URL. " +
-                        "Provide a Confluence page or space URL."
-        );
+        throw new IllegalArgumentException("Unsupported Confluence URL. " +"Provide a Confluence page or space URL.");
     }
 
-    private void validateHost(URI uri) {
-
-        String host = uri.getHost();
-
-        if (host == null ||
-                !host.equalsIgnoreCase(expectedHost)) {
-
-            throw new IllegalArgumentException(
-                    "URL does not belong to the configured Confluence instance"
-            );
-        }
+    private String getBaseUrl(URI uri) {
+        return uri.getScheme() + "://" + uri.getAuthority() + "/wiki";
     }
 
     private void validateScheme(URI uri) {
@@ -124,7 +99,8 @@ public class ConfluenceUrlParser {
     public record ConfluenceUrl(
             Type type,
             String spaceKey,
-            String pageId
+            String pageId,
+            String baseUrl
     ) {
     }
 }

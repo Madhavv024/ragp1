@@ -3,6 +3,7 @@ package com.madhavv.enterpriserag.controller;
 import com.madhavv.enterpriserag.dto.*;
 import com.madhavv.enterpriserag.service.ConfluenceClient;
 import com.madhavv.enterpriserag.service.ConfluenceIngestionService;
+import com.madhavv.enterpriserag.service.ConfluenceUrlParser;
 import com.madhavv.enterpriserag.service.DocumentIngestionService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
 
@@ -20,11 +22,13 @@ public class DocumentController {
     private final DocumentIngestionService documentIngestionService;
     private final ConfluenceClient confluenceClient;
     private final ConfluenceIngestionService confluenceIngestionService;
+    private final ConfluenceUrlParser confluenceUrlParser;
 
-    public DocumentController(DocumentIngestionService documentIngestionService, ConfluenceClient confluenceClient, ConfluenceIngestionService confluenceIngestionService) {
+    public DocumentController(DocumentIngestionService documentIngestionService, ConfluenceClient confluenceClient, ConfluenceIngestionService confluenceIngestionService, ConfluenceUrlParser confluenceUrlParser) {
         this.documentIngestionService = documentIngestionService;
         this.confluenceClient = confluenceClient;
         this.confluenceIngestionService = confluenceIngestionService;
+        this.confluenceUrlParser = confluenceUrlParser;
     }
 
     @PostMapping("/confluence/{pageId}/ingest")
@@ -111,5 +115,42 @@ public class DocumentController {
                 : HttpStatus.CREATED;
 
         return ResponseEntity.status(status).body(result);
+    }
+
+    @PostMapping("/confluence/user/ingest")
+    public ResponseEntity<ConfluenceTreeIngestionResult> ingestConfluenceForUser(@RequestBody ConfluenceUserIngestionRequest request) {
+
+        ConfluenceUrlParser.ConfluenceUrl parsed = confluenceUrlParser.parse(request.url());
+
+        ConfluenceCredentials credentials =
+                new ConfluenceCredentials(
+                        request.email(),
+                        request.apiToken()
+                );
+
+        ConfluenceTreeIngestionResult result;
+
+        switch (parsed.type()) {
+
+            case PAGE -> result =
+                    confluenceIngestionService.ingestPageTree(
+                            parsed.pageId(),
+                            credentials,
+                            parsed.baseUrl()
+                    );
+
+            case SPACE -> result =
+                    confluenceIngestionService.ingestSpace(
+                            parsed.spaceKey(),
+                            credentials,
+                            parsed.baseUrl()
+                    );
+
+            default -> throw new IllegalArgumentException(
+                    "Unsupported Confluence URL"
+            );
+        }
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 }
