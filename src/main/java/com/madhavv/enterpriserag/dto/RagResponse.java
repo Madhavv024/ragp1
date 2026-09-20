@@ -10,7 +10,8 @@ public record RagResponse(
             String filename,
             double similarity,
             String documentId,
-            Integer chunkIndex
+            Integer chunkIndex,
+            String sourceUrl
     ) {
     }
 }

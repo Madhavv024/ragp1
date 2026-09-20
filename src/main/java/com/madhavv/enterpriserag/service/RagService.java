@@ -81,7 +81,8 @@ public class RagService {
                             result.filename(),
                             result.score(),
                             result.documentId(),
-                            result.chunkIndex()
+                            result.chunkIndex(),
+                            result.sourceUrl()
                     )).sorted(Comparator.comparing(entity -> entity.similarity(), Comparator.reverseOrder()))
                     .limit(3)
                     .toList();
@@ -167,14 +168,15 @@ public class RagService {
         // 5. Send grounded prompt to DeepSeek
         answer = llmService.ask(prompt, question.model());
 
-        List<RagResponse.Source> sources = results.stream()
-                .map(result -> new RagResponse.Source(
-                        result.filename(),
-                        result.score(),
-                        result.documentId(),
-                        result.chunkIndex()
-                ))
-                .toList();
+//        List<RagResponse.Source> sources = results.stream()
+//                .map(result -> new RagResponse.Source(
+//                        result.filename(),
+//                        result.score(),
+//                        result.documentId(),
+//                        result.chunkIndex(),
+//                        result.sourceUrl()
+//                ))
+//                .toList();
 
         return new RagDebugResponse( question.question(), question.sourceType(), chunks, context, answer );
     }

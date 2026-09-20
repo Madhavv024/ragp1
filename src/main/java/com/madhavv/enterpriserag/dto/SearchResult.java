@@ -5,6 +5,7 @@ public record SearchResult(
         double score,
         String documentId,
         String filename,
-        Integer chunkIndex
+        Integer chunkIndex,
+        String sourceUrl
 ) {
 }

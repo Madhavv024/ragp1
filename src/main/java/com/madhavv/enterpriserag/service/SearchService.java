@@ -50,7 +50,8 @@ public class SearchService {
                         document.getScore(),
                         (String) document.getMetadata().get("documentId"),
                         (String) document.getMetadata().get("filename"),
-                        (Integer) document.getMetadata().get("chunkIndex")
+                        (Integer) document.getMetadata().get("chunkIndex"),
+                        (String) document.getMetadata().get("confluenceUrl")
                 ))
                 .toList();
     }
