@@ -14,13 +14,11 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
-                        .allowedOrigins(
-                                "http://localhost:5173",
-                                "https://rag.urbanlaunch.online",
-                                "https://rag-fe.urbanlaunch.online"
-                        )
+                        .allowedOrigins("http://localhost:5173", "https://rag.urbanlaunch.online", "https://rag-fe.urbanlaunch.online")
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                        .allowedHeaders("*");
+                        .allowedHeaders("Authorization","Content-Type")
+                        .exposedHeaders("Authorization")
+                        .maxAge(3600);
             }
         };
     }

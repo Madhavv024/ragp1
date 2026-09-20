@@ -25,8 +25,9 @@ public class ConfluenceIngestionService {
     private final RagActivityLogRepository ragActivityLogRepository;
     private final ConfluenceVectorRepository confluenceVectorRepository;
     private final ConfluenceUrlParser confluenceUrlParser;
+    private final AuthenticatedUserService authenticatedUserService;
 
-    public ConfluenceIngestionService(ConfluenceClient confluenceClient, ConfluenceTextExtractor textExtractor, VectorStore vectorStore, RagActivityLogRepository ragActivityLogRepository, ConfluenceVectorRepository confluenceVectorRepository, ConfluenceUrlParser confluenceUrlParser) {
+    public ConfluenceIngestionService(ConfluenceClient confluenceClient, ConfluenceTextExtractor textExtractor, VectorStore vectorStore, RagActivityLogRepository ragActivityLogRepository, ConfluenceVectorRepository confluenceVectorRepository, ConfluenceUrlParser confluenceUrlParser, AuthenticatedUserService authenticatedUserService) {
 
         this.confluenceClient = confluenceClient;
         this.textExtractor = textExtractor;
@@ -34,6 +35,7 @@ public class ConfluenceIngestionService {
         this.ragActivityLogRepository = ragActivityLogRepository;
         this.confluenceVectorRepository = confluenceVectorRepository;
         this.confluenceUrlParser = confluenceUrlParser;
+        this.authenticatedUserService = authenticatedUserService;
 
         this.textSplitter = TokenTextSplitter.builder()
                 .withChunkSize(400)
@@ -54,12 +56,13 @@ public class ConfluenceIngestionService {
         confluenceVectorRepository.deleteByPageId(page.id());
 
         String content = textExtractor.extract(page.body());
-
+        UUID userId = authenticatedUserService.getCurrentUserId();
         UUID documentId = UUID.randomUUID();
         OffsetDateTime ingestedAt = OffsetDateTime.now(ZoneOffset.UTC);
 
         Map<String, Object> metadata = Map.of(
                 "documentId", documentId.toString(),
+                "userId", userId.toString(),
                 "filename", page.title(),
                 "contentType", "confluence",
                 "sourceType", "CONFLUENCE",

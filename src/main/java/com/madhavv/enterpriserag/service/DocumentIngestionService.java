@@ -19,10 +19,12 @@ public class DocumentIngestionService {
     private final VectorStore vectorStore;
     private final TokenTextSplitter textSplitter;
     private final RagActivityLogRepository ragActivityLogRepository;
+    private final AuthenticatedUserService authenticatedUserService;
 
-    public DocumentIngestionService(VectorStore vectorStore, RagActivityLogRepository ragActivityLogRepository) {
+    public DocumentIngestionService(VectorStore vectorStore, RagActivityLogRepository ragActivityLogRepository, AuthenticatedUserService authenticatedUserService) {
         this.vectorStore = vectorStore;
         this.ragActivityLogRepository = ragActivityLogRepository;
+        this.authenticatedUserService = authenticatedUserService;
 
         this.textSplitter = TokenTextSplitter.builder()
                 .withChunkSize(400)
@@ -35,6 +37,7 @@ public class DocumentIngestionService {
 
     public IngestionResult ingest(MultipartFile file) throws IOException {
 
+        UUID userId = authenticatedUserService.getCurrentUserId();
         UUID documentId = UUID.randomUUID();
 
         TikaDocumentReader reader = new TikaDocumentReader(file.getResource());
@@ -53,6 +56,7 @@ public class DocumentIngestionService {
         metadata.put("filename", file.getOriginalFilename());
         metadata.put("contentType", file.getContentType());
         metadata.put("sourceType", "DOCUMENTS");
+        metadata.put("userId", userId.toString());
 
         documents.forEach(document ->
                 document.getMetadata().putAll(metadata)
