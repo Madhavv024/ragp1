@@ -1,8 +1,10 @@
 package com.madhavv.enterpriserag.dto;
 
 import java.util.List;
+import java.util.UUID;
 
 public record RagResponse(
+        UUID conversationId,
         String answer,
         List<Source> sources
 ) {

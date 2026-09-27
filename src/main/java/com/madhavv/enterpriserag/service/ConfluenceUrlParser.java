@@ -9,16 +9,10 @@ import java.util.regex.Pattern;
 @Component
 public class ConfluenceUrlParser {
 
-    private static final Pattern PAGE_PATTERN = Pattern.compile(
-            "^/wiki/spaces/([^/]+)/pages/(\\d+)(?:/.*)?/?$"
-    );
+    private static final Pattern PAGE_PATTERN = Pattern.compile("^/wiki/spaces/([^/]+)/pages/(\\d+)(?:/.*)?/?$");
 
-    private static final Pattern SPACE_PATTERN = Pattern.compile(
-            "^/wiki/spaces/([^/]+)/?$"
-    );
+    private static final Pattern SPACE_PATTERN = Pattern.compile("^/wiki/spaces/([^/]+)/?$");
 
-    public ConfluenceUrlParser() {
-    }
 
     public ConfluenceUrl parse(String url) {
 
@@ -39,6 +33,7 @@ public class ConfluenceUrlParser {
         }
 
         validateScheme(uri);
+//        validateDomain(uri);
 
         String path = uri.getPath();
 

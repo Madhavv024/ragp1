@@ -4,11 +4,13 @@ import com.madhavv.enterpriserag.dto.RagDebugResponse;
 import com.madhavv.enterpriserag.dto.RagResponse;
 import com.madhavv.enterpriserag.dto.SearchRequestDto;
 import com.madhavv.enterpriserag.dto.SearchResult;
+import com.madhavv.enterpriserag.repository.ConversationRepository;
 import com.madhavv.enterpriserag.repository.RagQueryLogRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -18,19 +20,53 @@ public class RagService {
     private final SearchService searchService;
     private final LlmService llmService;
     private final RagQueryLogRepository ragQueryLogRepository;
+    private final ConversationService conversationService;
+    private final ConversationRepository conversationRepository;
 
-    public RagService(SearchService searchService, LlmService llmService, RagQueryLogRepository ragQueryLogRepository) {
+    public RagService(SearchService searchService, LlmService llmService, RagQueryLogRepository ragQueryLogRepository, ConversationService conversationService, ConversationRepository conversationRepository) {
         this.searchService = searchService;
         this.llmService = llmService;
         this.ragQueryLogRepository = ragQueryLogRepository;
+        this.conversationService = conversationService;
+        this.conversationRepository = conversationRepository;
     }
 
     public RagResponse ask(SearchRequestDto question) {
+
+        UUID conversationId = question.conversationId();
+
+        if (conversationId == null) {
+            conversationId = conversationService.createConversation("New Conversation");
+        } else {
+            conversationService.validateOwnership(conversationId);
+        }
+
+        List<Map<String, Object>> history = conversationService.getHistory(conversationId);
+
+        String conversationHistory = history.stream()
+                .map(message -> "%s: %s".formatted(
+                        message.get("role"),
+                        message.get("content")
+                ))
+                .collect(Collectors.joining("\n"));
+
+        conversationService.saveMessage(
+                conversationId,
+                "USER",
+                question.question()
+        );
 
         try{
             List<SearchResult> results = searchService.search(question);
             // 2. No documents found
             if (results == null || results.isEmpty()) {
+
+                String answer = "I could not find the answer in the provided documents.";
+                conversationService.saveMessage(
+                        conversationId,
+                        "ASSISTANT",
+                        answer
+                );
 
                 ragQueryLogRepository.save(
                         UUID.randomUUID(),
@@ -38,8 +74,8 @@ public class RagService {
                         question.sourceType(),
                         true
                 );
-                return new RagResponse(
-                        "I could not find the answer in the provided documents.",
+                return new RagResponse(conversationId,
+                        answer,
                         List.of()
                 );
             }
@@ -52,26 +88,37 @@ public class RagService {
             // 4. Create strict document-grounded prompt
             String prompt = """
                 You are an enterprise document question-answering assistant.
-
-                Answer the user's question ONLY using the information
-                contained in the DOCUMENT CONTEXT below.
-
+            
+                Answer the user's question using:
+                1. The conversation history for context.
+                2. The DOCUMENT CONTEXT as the authoritative source for factual answers.
+            
                 Rules:
                 - Do not use your general knowledge.
                 - Do not use information from outside the provided documents.
                 - Do not invent facts.
                 - Do not assume information that is not explicitly supported
                   by the documents.
+                - Conversation history may be used to understand references
+                  such as "it", "that", or "the previous topic", but factual
+                  answers must still be supported by the DOCUMENT CONTEXT.
                 - If the answer cannot be determined from the documents,
                   respond exactly:
                   "I could not find the answer in the provided documents."
-
+            
+                CONVERSATION HISTORY:
+                %s
+            
                 DOCUMENT CONTEXT:
                 %s
-
+            
                 USER QUESTION:
                 %s
-                """.formatted(context, question.question());
+                """.formatted(
+                    conversationHistory,
+                    context,
+                    question.question()
+            );
 
             // 5. Send grounded prompt to DeepSeek
             String answer = llmService.ask(prompt, question.model());
@@ -93,7 +140,14 @@ public class RagService {
                     question.sourceType(),
                     true
             );
-            return new RagResponse(answer, sources);
+
+            conversationService.saveMessage(
+                    conversationId,
+                    "ASSISTANT",
+                    answer
+            );
+
+            return new RagResponse(conversationId,answer, sources);
         }
         catch (Exception e){
             // Log failed query without hiding the original exception
@@ -167,16 +221,6 @@ public class RagService {
 
         // 5. Send grounded prompt to DeepSeek
         answer = llmService.ask(prompt, question.model());
-
-//        List<RagResponse.Source> sources = results.stream()
-//                .map(result -> new RagResponse.Source(
-//                        result.filename(),
-//                        result.score(),
-//                        result.documentId(),
-//                        result.chunkIndex(),
-//                        result.sourceUrl()
-//                ))
-//                .toList();
 
         return new RagDebugResponse( question.question(), question.sourceType(), chunks, context, answer );
     }

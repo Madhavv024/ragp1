@@ -53,10 +53,9 @@ public class ConfluenceIngestionService {
     }
 
     private int ingestPage(ConfluencePage page) {
-        confluenceVectorRepository.deleteByPageId(page.id());
-
-        String content = textExtractor.extract(page.body());
         UUID userId = authenticatedUserService.getCurrentUserId();
+        confluenceVectorRepository.deleteByPageId(page.id(), userId);
+        String content = textExtractor.extract(page.body());
         UUID documentId = UUID.randomUUID();
         OffsetDateTime ingestedAt = OffsetDateTime.now(ZoneOffset.UTC);
 

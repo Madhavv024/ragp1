@@ -68,3 +68,7 @@ openrouter:
 jwt:
   secret: K8vQ2mX7pL9sN4zR6tY1wF3hJ5cD0aB8uG2xV7nM9qP4sT6k
   expiration: 86400000
+
+conversation:
+  history:
+    max-messages: 15

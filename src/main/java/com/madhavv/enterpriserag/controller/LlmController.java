@@ -4,6 +4,7 @@ import com.madhavv.enterpriserag.dto.RagDebugResponse;
 import com.madhavv.enterpriserag.dto.RagRequest;
 import com.madhavv.enterpriserag.dto.RagResponse;
 import com.madhavv.enterpriserag.dto.SearchRequestDto;
+import com.madhavv.enterpriserag.service.ConversationService;
 import com.madhavv.enterpriserag.service.LlmService;
 import com.madhavv.enterpriserag.service.OpenRouterService;
 import com.madhavv.enterpriserag.service.RagService;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /*
 * TODO
@@ -42,11 +44,13 @@ public class LlmController {
     private final LlmService llmService;
     private final RagService ragService;
     private final OpenRouterService openRouterService;
+    private final ConversationService conversationService;
 
-    public LlmController(LlmService llmService, RagService ragService, OpenRouterService openRouterService) {
+    public LlmController(LlmService llmService, RagService ragService, OpenRouterService openRouterService, ConversationService conversationService) {
         this.llmService = llmService;
         this.ragService = ragService;
         this.openRouterService = openRouterService;
+        this.conversationService = conversationService;
     }
 
     @PostMapping("/test")
@@ -63,8 +67,24 @@ public class LlmController {
         return ResponseEntity.ok(ragService.debug(request));
     }
 
+    @GetMapping("/conversations")
+    public ResponseEntity<List<Map<String, Object>>> getUserConversations() {
+        return ResponseEntity.ok(conversationService.getUserConversations());
+    }
+
     @GetMapping("/models")
     public ResponseEntity<List<OpenRouterService.LlmModelDto>> getModels() {
         return ResponseEntity.ok(openRouterService.getModels());
+    }
+
+    @GetMapping("/{conversationId}/messages")
+    public ResponseEntity<List<Map<String, Object>>> getConversationHistory(@PathVariable UUID conversationId) {
+        return ResponseEntity.ok(conversationService.getHistory(conversationId));
+    }
+
+    @PutMapping("/{conversationId}/title")
+    public ResponseEntity<Void> updateConversationTitle(@PathVariable UUID conversationId, @RequestBody String title) {
+        conversationService.updateConversationTitle(conversationId,title);
+        return ResponseEntity.noContent().build();
     }
 }

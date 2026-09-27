@@ -30,15 +30,17 @@ public class ConfluenceVectorRepository {
         );
     }
 
-    public void deleteByPageId(String pageId) {
+    public void deleteByPageId(String pageId, UUID userId) {
 
         jdbcTemplate.update(
                 """
                 DELETE FROM vector_store
                 WHERE metadata->>'sourceType' = 'CONFLUENCE'
                   AND metadata->>'pageId' = ?
+                  AND metadata->>'userId' = ?
                 """,
-                pageId
+                pageId,
+                userId.toString()
         );
     }
 }
