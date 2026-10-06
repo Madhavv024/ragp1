@@ -33,9 +33,9 @@ public class DocumentController {
 
     @PostMapping("/confluence/{pageId}/ingest")
     public ResponseEntity<Map<String, Object>> ingestConfluencePage(
-            @PathVariable String pageId) {
+            @PathVariable String pageId,  @RequestParam("visibility") String visibility) {
 
-        int chunks = confluenceIngestionService.ingest(pageId);
+        int chunks = confluenceIngestionService.ingest(pageId, visibility);
 
         return ResponseEntity.ok(
                 Map.of(
@@ -57,9 +57,9 @@ public class DocumentController {
 
     @PostMapping(value = "upload")
     public ResponseEntity<Map<String, String>> uploadDocument(
-            @RequestParam("file") MultipartFile file) throws IOException {
+            @RequestParam("file") MultipartFile file,  @RequestParam("visibility") String visibility) throws IOException {
 
-        IngestionResult result = documentIngestionService.ingest(file);
+        IngestionResult result = documentIngestionService.ingest(file, visibility);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(
                 Map.of(
@@ -72,9 +72,9 @@ public class DocumentController {
 
     @PostMapping("/upload-folder")
     public ResponseEntity<FolderIngestionResult> uploadFolder(
-            @RequestParam("files") List<MultipartFile> files) {
+            @RequestParam("files") List<MultipartFile> files, @RequestParam("visibility") String visibility) {
 
-        FolderIngestionResult result = documentIngestionService.ingestFolder(files);
+        FolderIngestionResult result = documentIngestionService.ingestFolder(files, visibility);
 
         HttpStatus status = result.failed() == result.totalFiles() ? HttpStatus.BAD_REQUEST : HttpStatus.CREATED;
 
@@ -83,18 +83,18 @@ public class DocumentController {
 
     @GetMapping("/confluence/space/{spaceId}/pages")
     public ResponseEntity<List<ConfluencePageSummary>> getSpacePages(
-            @PathVariable String spaceId) {
+            @PathVariable String spaceId, @RequestParam("visibility") String visibility) {
 
         return ResponseEntity.ok(
-                confluenceClient.getPagesInSpace(spaceId)
+                confluenceClient.getPagesInSpace(spaceId, visibility)
         );
     }
 
     @PostMapping("/confluence/page-tree/{pageId}/ingest")
     public ResponseEntity<ConfluenceTreeIngestionResult> ingestPageTree(
-            @PathVariable String pageId) {
+            @PathVariable String pageId, @RequestParam("visibility") String visibility) {
 
-        ConfluenceTreeIngestionResult result = confluenceIngestionService.ingestPageTree(pageId);
+        ConfluenceTreeIngestionResult result = confluenceIngestionService.ingestPageTree(pageId, visibility);
 
         HttpStatus status = result.failed() == result.totalPages()
                 ? HttpStatus.BAD_REQUEST
@@ -105,10 +105,10 @@ public class DocumentController {
 
     @PostMapping("/confluence/ingest")
     public ResponseEntity<ConfluenceTreeIngestionResult> ingestConfluence(
-            @RequestBody ConfluenceIngestionRequest request) {
+            @RequestBody ConfluenceIngestionRequest request, @RequestParam("visibility") String visibility) {
 
         ConfluenceTreeIngestionResult result =
-                confluenceIngestionService.ingestFromUrl(request.url());
+                confluenceIngestionService.ingestFromUrl(request.url(), visibility);
 
         HttpStatus status = result.failed() == result.totalPages()
                 ? HttpStatus.BAD_REQUEST
@@ -136,14 +136,15 @@ public class DocumentController {
                     confluenceIngestionService.ingestPageTree(
                             parsed.pageId(),
                             credentials,
-                            parsed.baseUrl()
+                            parsed.baseUrl(),
+                            request.visibility()
                     );
 
             case SPACE -> result =
                     confluenceIngestionService.ingestSpace(
                             parsed.spaceKey(),
                             credentials,
-                            parsed.baseUrl()
+                            parsed.baseUrl(), request.visibility()
                     );
 
             default -> throw new IllegalArgumentException(

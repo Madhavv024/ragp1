@@ -46,13 +46,13 @@ public class ConfluenceIngestionService {
                 .build();
     }
 
-    public int ingest(String pageId) {
+    public int ingest(String pageId, String visbility) {
 
         ConfluencePage page = confluenceClient.getPage(pageId);
-        return ingestPage(page);
+        return ingestPage(page, visbility);
     }
 
-    private int ingestPage(ConfluencePage page) {
+    private int ingestPage(ConfluencePage page, String visibility) {
         UUID userId = authenticatedUserService.getCurrentUserId();
         confluenceVectorRepository.deleteByPageId(page.id(), userId);
         String content = textExtractor.extract(page.body());
@@ -67,7 +67,8 @@ public class ConfluenceIngestionService {
                 "sourceType", "CONFLUENCE",
                 "pageId", page.id(),
                 "confluenceUrl", page.webUrl(),
-                "ingestedAt", ingestedAt.toString()
+                "ingestedAt", ingestedAt.toString(),
+                "visibility", visibility.toUpperCase()
         );
 
         Document document = new Document(content, metadata);
@@ -90,12 +91,12 @@ public class ConfluenceIngestionService {
         return chunks.size();
     }
 
-    public int ingest(String pageId, ConfluenceCredentials credentials, String baseUrl) {
+    public int ingest(String pageId, ConfluenceCredentials credentials, String baseUrl, String visibility) {
         ConfluencePage page = confluenceClient.getPage(pageId, credentials, baseUrl);
-        return ingestPage(page);
+        return ingestPage(page, visibility);
     }
 
-    public ConfluenceTreeIngestionResult ingestPageTree(String rootPageId) {
+    public ConfluenceTreeIngestionResult ingestPageTree(String rootPageId, String visibility) {
 
         Set<String> visitedPageIds = new HashSet<>();
         List<ConfluencePageSummary> pages = new ArrayList<>();
@@ -117,7 +118,7 @@ public class ConfluenceIngestionService {
         for (ConfluencePageSummary page : pages) {
 
             try {
-                int chunks = ingest(page.id());
+                int chunks = ingest(page.id(), visibility);
                 successfulPages.add(new ConfluenceTreeIngestionResult.PageResult(page.id(), page.title(), chunks, "INGESTED"));
                 totalChunks += chunks;
 
@@ -150,23 +151,23 @@ public class ConfluenceIngestionService {
         }
     }
 
-    public ConfluenceTreeIngestionResult ingestFromUrl(String url) {
+    public ConfluenceTreeIngestionResult ingestFromUrl(String url, String visibility) {
 
         ConfluenceUrlParser.ConfluenceUrl parsed = confluenceUrlParser.parse(url);
 
         return switch (parsed.type()) {
             case PAGE ->
-                    ingestPageTree(parsed.pageId());
+                    ingestPageTree(parsed.pageId(), visibility);
             case SPACE ->
-                    ingestSpace(parsed.spaceKey());
+                    ingestSpace(parsed.spaceKey(), visibility);
         };
     }
 
-    private ConfluenceTreeIngestionResult ingestSpace(String spaceKey) {
+    private ConfluenceTreeIngestionResult ingestSpace(String spaceKey, String visibility) {
 
         var space = confluenceClient.getSpaceByKey(spaceKey);
 
-        List<ConfluencePageSummary> pages = confluenceClient.getPagesInSpace(space.id());
+        List<ConfluencePageSummary> pages = confluenceClient.getPagesInSpace(space.id(),visibility );
 
         List<ConfluenceTreeIngestionResult.PageResult> successfulPages =
                 new ArrayList<>();
@@ -180,7 +181,7 @@ public class ConfluenceIngestionService {
 
             try {
 
-                int chunks = ingest(page.id());
+                int chunks = ingest(page.id(), visibility);
 
                 successfulPages.add(
                         new ConfluenceTreeIngestionResult.PageResult(
@@ -218,7 +219,7 @@ public class ConfluenceIngestionService {
         );
     }
 
-    public ConfluenceTreeIngestionResult ingestPageTree(String rootPageId, ConfluenceCredentials credentials, String baseUrl) {
+    public ConfluenceTreeIngestionResult ingestPageTree(String rootPageId, ConfluenceCredentials credentials, String baseUrl, String visibility) {
         Set<String> visitedPageIds = new HashSet<>();
         List<ConfluencePageSummary> pages = new ArrayList<>();
 
@@ -243,7 +244,7 @@ public class ConfluenceIngestionService {
                 int chunks = ingest(
                         page.id(),
                         credentials,
-                        baseUrl
+                        baseUrl, visibility
                 );
 
                 successfulPages.add(
@@ -318,7 +319,7 @@ public class ConfluenceIngestionService {
         }
     }
 
-    public ConfluenceTreeIngestionResult ingestSpace(String spaceKey, ConfluenceCredentials credentials, String baseUrl) {
+    public ConfluenceTreeIngestionResult ingestSpace(String spaceKey, ConfluenceCredentials credentials, String baseUrl, String visibility) {
         ConfluenceSpace space = confluenceClient.getSpaceByKey(
                         spaceKey,
                         credentials,
@@ -345,7 +346,7 @@ public class ConfluenceIngestionService {
                 int chunks = ingest(
                         page.id(),
                         credentials,
-                        baseUrl
+                        baseUrl, visibility
                 );
 
                 successfulPages.add(

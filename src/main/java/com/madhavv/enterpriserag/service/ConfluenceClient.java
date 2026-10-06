@@ -101,7 +101,7 @@ public class ConfluenceClient {
         );
     }
 
-    public List<ConfluencePageSummary> getPagesInSpace(String spaceId) {
+    public List<ConfluencePageSummary> getPagesInSpace(String spaceId, String visibility) {
 
         List<ConfluencePageSummary> pages = new ArrayList<>();
 

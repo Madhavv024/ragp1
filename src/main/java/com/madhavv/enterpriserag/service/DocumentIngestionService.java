@@ -35,7 +35,7 @@ public class DocumentIngestionService {
                 .build();
     }
 
-    public IngestionResult ingest(MultipartFile file) throws IOException {
+    public IngestionResult ingest(MultipartFile file, String visibility) throws IOException{
 
         UUID userId = authenticatedUserService.getCurrentUserId();
         UUID documentId = UUID.randomUUID();
@@ -52,11 +52,21 @@ public class DocumentIngestionService {
         );
 
         Map<String, Object> metadata = new HashMap<>();
+
+        if (!"PRIVATE".equalsIgnoreCase(visibility)
+                && !"PUBLIC".equalsIgnoreCase(visibility)) {
+            throw new IllegalArgumentException(
+                    "Visibility must be either PRIVATE or PUBLIC"
+            );
+        }
+
+
         metadata.put("documentId", documentId.toString());
         metadata.put("filename", file.getOriginalFilename());
         metadata.put("contentType", file.getContentType());
         metadata.put("sourceType", "DOCUMENTS");
         metadata.put("userId", userId.toString());
+        metadata.put("visibility", visibility.toUpperCase());
 
         documents.forEach(document ->
                 document.getMetadata().putAll(metadata)
@@ -87,7 +97,7 @@ public class DocumentIngestionService {
         );
     }
 
-    public FolderIngestionResult ingestFolder(List<MultipartFile> files) {
+    public FolderIngestionResult ingestFolder(List<MultipartFile> files, String visibility) {
 
         if (files == null || files.isEmpty()) {
             return new FolderIngestionResult(
@@ -119,7 +129,7 @@ public class DocumentIngestionService {
             }
 
             try {
-                IngestionResult result = ingest(file);
+                IngestionResult result = ingest(file, visibility);
                 successfulDocuments.add(result);
 
             } catch (Exception ex) {
