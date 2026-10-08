@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/documents")
@@ -153,5 +154,21 @@ public class DocumentController {
         }
 
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<Map<String, Object>>> getDocuments() {
+        return ResponseEntity.ok(
+                documentIngestionService.getUserDocuments()
+        );
+    }
+
+    @DeleteMapping("/{documentId}")
+    public ResponseEntity<Void> deleteDocument(
+            @PathVariable UUID documentId) {
+
+        documentIngestionService.deleteDocument(documentId);
+
+        return ResponseEntity.noContent().build();
     }
 }

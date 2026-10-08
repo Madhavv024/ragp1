@@ -1,5 +1,6 @@
 package com.madhavv.enterpriserag.service;
 
+import com.madhavv.enterpriserag.Exception.ResourceNotFoundException;
 import com.madhavv.enterpriserag.repository.ConversationRepository;
 import com.madhavv.enterpriserag.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,6 +24,18 @@ public class ConversationService {
         this.authenticatedUserService = authenticatedUserService;
     }
 
+    public void deleteConversation(UUID conversationId) {
+
+        UUID userId = authenticatedUserService.getCurrentUserId();
+
+        validateOwnership(conversationId);
+
+        conversationRepository.deleteConversation(
+                conversationId,
+                userId
+        );
+    }
+
 
     public void validateOwnership(UUID conversationId) {
         UUID userId = authenticatedUserService.getCurrentUserId();
@@ -33,7 +46,7 @@ public class ConversationService {
         );
 
         if (!owned) {
-            throw new IllegalArgumentException("Conversation not found");
+            throw new ResourceNotFoundException("Conversation not found");
         }
     }
 

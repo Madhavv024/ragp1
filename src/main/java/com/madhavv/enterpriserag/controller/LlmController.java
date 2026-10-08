@@ -87,4 +87,12 @@ public class LlmController {
         conversationService.updateConversationTitle(conversationId,title);
         return ResponseEntity.noContent().build();
     }
+
+    @DeleteMapping("/{conversationId}")
+    public ResponseEntity<Void> deleteConversation(@PathVariable UUID conversationId) {
+
+        conversationService.deleteConversation(conversationId);
+
+        return ResponseEntity.noContent().build();
+    }
 }

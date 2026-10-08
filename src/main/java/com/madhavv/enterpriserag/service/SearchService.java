@@ -18,15 +18,15 @@ public class SearchService {
     private final VectorStore vectorStore;
     private final AuthenticatedUserService authenticatedUserService;
 
-    private final int topK;
-    private final double similarityThreshold;
+//    private final int topK;
+//    private final double similarityThreshold;
 
-    public SearchService(VectorStore vectorStore, AuthenticatedUserService authenticatedUserService,
-            @Value("${rag.retrieval.top-k:5}") int topK, @Value("${rag.retrieval.similarity-threshold:0.70}") double similarityThreshold) {
+    public SearchService(VectorStore vectorStore, AuthenticatedUserService authenticatedUserService){
+//            @Value("${rag.retrieval.top-k:5}") int topK, @Value("${rag.retrieval.similarity-threshold:0.70}") double similarityThreshold) {
         this.vectorStore = vectorStore;
         this.authenticatedUserService = authenticatedUserService;
-        this.topK = topK;
-        this.similarityThreshold = similarityThreshold;
+//        this.topK = topK;
+//        this.similarityThreshold = similarityThreshold;
     }
 
     public List<SearchResult> search(SearchRequestDto searchRequestDto) {
@@ -59,7 +59,7 @@ public class SearchService {
 
         System.out.println("=== RAG RETRIEVAL BEFORE THRESHOLD ===");
         System.out.println("Query: " + searchRequestDto.question());
-        System.out.println("Configured threshold: " + similarityThreshold);
+//        System.out.println("Configured threshold: " + similarityThreshold);
 
         documents.forEach(document ->
                 System.out.println(
@@ -71,14 +71,14 @@ public class SearchService {
                 )
         );
 
-        documents = documents.stream()
-                .filter(document ->
-                        document.getScore() != null &&
-                                document.getScore() >= similarityThreshold
-                )
-                .toList();
+//        documents = documents.stream()
+//                .filter(document ->
+//                        document.getScore() != null &&
+//                                document.getScore() >= similarityThreshold
+//                )
+//                .toList();
 
-        System.out.println("Chunks after threshold: " + documents.size());
+//        System.out.println("Chunks after threshold: " + documents.size());
 
         return documents.stream()
                 .map(document -> new SearchResult(

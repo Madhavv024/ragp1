@@ -33,11 +33,14 @@ public class ConversationRepository {
                 """
                 SELECT COUNT(*)
                 FROM conversations
-                WHERE id = ?
-                  AND user_id = ?
+                WHERE id = CAST(? AS UUID)
+                  AND user_id = CAST(? AS UUID)
                 """,
-                Integer.class, conversationId, userId
+                Integer.class,
+                conversationId.toString(),
+                userId.toString()
         );
+
         return count != null && count > 0;
     }
 
@@ -96,6 +99,27 @@ public class ConversationRepository {
                   AND user_id = ?
                 """,
                 title,
+                conversationId,
+                userId
+        );
+    }
+
+    public void deleteConversation(UUID conversationId, UUID userId) {
+
+        jdbcTemplate.update(
+                """
+                DELETE FROM conversation_messages
+                WHERE conversation_id = ?
+                """,
+                conversationId
+        );
+
+        jdbcTemplate.update(
+                """
+                DELETE FROM conversations
+                WHERE id = ?
+                  AND user_id = ?
+                """,
                 conversationId,
                 userId
         );

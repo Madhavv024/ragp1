@@ -22,13 +22,15 @@ public class RagService {
     private final RagQueryLogRepository ragQueryLogRepository;
     private final ConversationService conversationService;
     private final ConversationRepository conversationRepository;
+    private final GuardrailService guardrailService;
 
-    public RagService(SearchService searchService, LlmService llmService, RagQueryLogRepository ragQueryLogRepository, ConversationService conversationService, ConversationRepository conversationRepository) {
+    public RagService(SearchService searchService, LlmService llmService, RagQueryLogRepository ragQueryLogRepository, ConversationService conversationService, ConversationRepository conversationRepository, GuardrailService guardrailService) {
         this.searchService = searchService;
         this.llmService = llmService;
         this.ragQueryLogRepository = ragQueryLogRepository;
         this.conversationService = conversationService;
         this.conversationRepository = conversationRepository;
+        this.guardrailService = guardrailService;
     }
 
     public RagResponse ask(SearchRequestDto question) {
@@ -57,7 +59,14 @@ public class RagService {
         );
 
         try{
-            List<SearchResult> results = searchService.search(question);
+            String sanitizedQuestion = guardrailService.sanitize(question.question());
+
+            SearchRequestDto sanitizedRequest = new SearchRequestDto(sanitizedQuestion, question.sourceType(),
+                            question.model(),
+                            question.conversationId()
+                    );
+
+            List<SearchResult> results = searchService.search(sanitizedRequest);
             // 2. No documents found
             if (results == null || results.isEmpty()) {
 
@@ -83,6 +92,7 @@ public class RagService {
             // 3. Build context from retrieved chunks
             String context = results.stream()
                     .map(SearchResult::content)
+                    .map(guardrailService::sanitize)
                     .collect(Collectors.joining("\n\n---\n\n"));
 
             // 4. Create strict document-grounded prompt
@@ -122,6 +132,8 @@ public class RagService {
 
             // 5. Send grounded prompt to DeepSeek
             String answer = llmService.ask(prompt, question.model());
+
+            answer = guardrailService.sanitize(answer);
 
             List<RagResponse.Source> sources = results.stream()
                     .map(result -> new RagResponse.Source(

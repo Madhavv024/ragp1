@@ -2,6 +2,7 @@ package com.madhavv.enterpriserag.service;
 
 import com.madhavv.enterpriserag.dto.*;
 import com.madhavv.enterpriserag.repository.ConfluenceVectorRepository;
+import com.madhavv.enterpriserag.repository.DocumentRepository;
 import com.madhavv.enterpriserag.repository.RagActivityLogRepository;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
@@ -21,13 +22,15 @@ public class ConfluenceIngestionService {
     private final ConfluenceClient confluenceClient;
     private final ConfluenceTextExtractor textExtractor;
     private final VectorStore vectorStore;
-    private final TokenTextSplitter textSplitter;
+    private final OverlapTokenTextSplitter textSplitter;
     private final RagActivityLogRepository ragActivityLogRepository;
     private final ConfluenceVectorRepository confluenceVectorRepository;
     private final ConfluenceUrlParser confluenceUrlParser;
     private final AuthenticatedUserService authenticatedUserService;
+    private final GuardrailService guardrailService;
+    private final DocumentRepository documentRepository;
 
-    public ConfluenceIngestionService(ConfluenceClient confluenceClient, ConfluenceTextExtractor textExtractor, VectorStore vectorStore, RagActivityLogRepository ragActivityLogRepository, ConfluenceVectorRepository confluenceVectorRepository, ConfluenceUrlParser confluenceUrlParser, AuthenticatedUserService authenticatedUserService) {
+    public ConfluenceIngestionService(ConfluenceClient confluenceClient, OverlapTokenTextSplitter textSplitter, ConfluenceTextExtractor textExtractor, VectorStore vectorStore, RagActivityLogRepository ragActivityLogRepository, ConfluenceVectorRepository confluenceVectorRepository, ConfluenceUrlParser confluenceUrlParser, AuthenticatedUserService authenticatedUserService, GuardrailService guardrailService, DocumentRepository documentRepository) {
 
         this.confluenceClient = confluenceClient;
         this.textExtractor = textExtractor;
@@ -36,14 +39,17 @@ public class ConfluenceIngestionService {
         this.confluenceVectorRepository = confluenceVectorRepository;
         this.confluenceUrlParser = confluenceUrlParser;
         this.authenticatedUserService = authenticatedUserService;
+        this.guardrailService = guardrailService;
+        this.documentRepository = documentRepository;
+        this.textSplitter = textSplitter;
 
-        this.textSplitter = TokenTextSplitter.builder()
+        /*this.textSplitter = TokenTextSplitter.builder()
                 .withChunkSize(400)
                 .withMinChunkSizeChars(200)
                 .withMinChunkLengthToEmbed(5)
                 .withMaxNumChunks(10_000)
                 .withKeepSeparator(true)
-                .build();
+                .build();*/
     }
 
     public int ingest(String pageId, String visbility) {
@@ -56,6 +62,7 @@ public class ConfluenceIngestionService {
         UUID userId = authenticatedUserService.getCurrentUserId();
         confluenceVectorRepository.deleteByPageId(page.id(), userId);
         String content = textExtractor.extract(page.body());
+        content = guardrailService.sanitize(content);
         UUID documentId = UUID.randomUUID();
         OffsetDateTime ingestedAt = OffsetDateTime.now(ZoneOffset.UTC);
 
@@ -80,6 +87,19 @@ public class ConfluenceIngestionService {
         }
 
         vectorStore.add(chunks);
+
+        documentRepository.save(
+                documentId,
+                userId,
+                page.title(),
+                "CONFLUENCE",
+                "confluence",
+                content.getBytes(java.nio.charset.StandardCharsets.UTF_8).length,
+                chunks.size(),
+                "INDEXED",
+                visibility.toUpperCase(),
+                page.webUrl()
+        );
 
         ragActivityLogRepository.save(
                 UUID.randomUUID(),

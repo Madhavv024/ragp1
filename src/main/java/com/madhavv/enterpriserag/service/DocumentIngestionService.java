@@ -2,6 +2,7 @@ package com.madhavv.enterpriserag.service;
 
 import com.madhavv.enterpriserag.dto.FolderIngestionResult;
 import com.madhavv.enterpriserag.dto.IngestionResult;
+import com.madhavv.enterpriserag.repository.DocumentRepository;
 import com.madhavv.enterpriserag.repository.RagActivityLogRepository;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.reader.tika.TikaDocumentReader;
@@ -17,22 +18,28 @@ import java.util.*;
 public class DocumentIngestionService {
 
     private final VectorStore vectorStore;
-    private final TokenTextSplitter textSplitter;
+    private final OverlapTokenTextSplitter textSplitter;
+    private final GuardrailService guardrailService;
     private final RagActivityLogRepository ragActivityLogRepository;
     private final AuthenticatedUserService authenticatedUserService;
+    private final DocumentRepository documentRepository;
 
-    public DocumentIngestionService(VectorStore vectorStore, RagActivityLogRepository ragActivityLogRepository, AuthenticatedUserService authenticatedUserService) {
+    public DocumentIngestionService(VectorStore vectorStore, RagActivityLogRepository ragActivityLogRepository, AuthenticatedUserService authenticatedUserService, OverlapTokenTextSplitter textSplitter, GuardrailService guardrailService, DocumentRepository documentRepository) {
         this.vectorStore = vectorStore;
         this.ragActivityLogRepository = ragActivityLogRepository;
         this.authenticatedUserService = authenticatedUserService;
 
-        this.textSplitter = TokenTextSplitter.builder()
+        /*this.textSplitter = TokenTextSplitter.builder()
                 .withChunkSize(400)
                 .withMinChunkSizeChars(200)
                 .withMinChunkLengthToEmbed(5)
                 .withMaxNumChunks(10_000)
                 .withKeepSeparator(true)
-                .build();
+                .build();*/
+
+        this.textSplitter = textSplitter;
+        this.guardrailService = guardrailService;
+        this.documentRepository = documentRepository;
     }
 
     public IngestionResult ingest(MultipartFile file, String visibility) throws IOException{
@@ -44,12 +51,8 @@ public class DocumentIngestionService {
 
         List<Document> documents = reader.get();
 
-        documents.forEach(document ->
-                System.out.println(
-                        "Extracted content length: "
-                                + document.getText().length()
-                )
-        );
+        documents = documents.stream().map(document -> new Document(guardrailService.sanitize(document.getText()),document.getMetadata()))
+                .toList();
 
         Map<String, Object> metadata = new HashMap<>();
 
@@ -82,6 +85,19 @@ public class DocumentIngestionService {
         }
 
         vectorStore.add(chunks);
+
+        documentRepository.save(
+                documentId,
+                userId,
+                file.getOriginalFilename(),
+                "DOCUMENTS",
+                file.getContentType(),
+                file.getSize(),
+                chunks.size(),
+                "INDEXED",
+                visibility.toUpperCase(),
+                null
+        );
 
         ragActivityLogRepository.save(
                 UUID.randomUUID(),
@@ -152,5 +168,19 @@ public class DocumentIngestionService {
                 successfulDocuments,
                 failedFiles
         );
+    }
+
+    public List<Map<String, Object>> getUserDocuments() {
+
+        UUID userId = authenticatedUserService.getCurrentUserId();
+
+        return documentRepository.findByUserId(userId);
+    }
+
+    public void deleteDocument(UUID documentId) {
+
+        UUID userId = authenticatedUserService.getCurrentUserId();
+
+        documentRepository.deleteByIdAndUserId(documentId, userId);
     }
 }
