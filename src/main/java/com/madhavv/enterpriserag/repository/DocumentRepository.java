@@ -67,23 +67,16 @@ public class DocumentRepository {
         );
     }
 
-    public List<Map<String, Object>> findByUserId(UUID userId) {
+    public List<Map<String, Object>> findVisibleToUser(UUID userId) {
         return jdbcTemplate.queryForList(
                 """
                 SELECT
-                    id,
-                    name,
-                    source_type,
-                    content_type,
-                    size_bytes,
-                    chunk_count,
-                    status,
-                    visibility,
-                    source_url,
-                    created_at,
-                    updated_at
+                    id, name, source_type, content_type, size_bytes,
+                    chunk_count, status, visibility, source_url,
+                    created_at, updated_at
                 FROM documents
-                WHERE user_id = ?
+                WHERE visibility = 'PUBLIC'
+                   OR user_id = ?
                 ORDER BY created_at DESC
                 """,
                 userId
@@ -113,31 +106,4 @@ public class DocumentRepository {
         );
     }
 
-    public List<Map<String, Object>> findByUserIdAndSourceType(
-            UUID userId,
-            String sourceType) {
-
-        return jdbcTemplate.queryForList(
-                """
-                SELECT
-                    id,
-                    name,
-                    source_type,
-                    content_type,
-                    size_bytes,
-                    chunk_count,
-                    status,
-                    visibility,
-                    source_url,
-                    created_at,
-                    updated_at
-                FROM documents
-                WHERE user_id = ?
-                  AND source_type = ?
-                ORDER BY created_at DESC
-                """,
-                userId,
-                sourceType
-        );
-    }
 }

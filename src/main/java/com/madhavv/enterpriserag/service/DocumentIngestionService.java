@@ -171,10 +171,8 @@ public class DocumentIngestionService {
     }
 
     public List<Map<String, Object>> getUserDocuments() {
-
         UUID userId = authenticatedUserService.getCurrentUserId();
-
-        return documentRepository.findByUserId(userId);
+        return documentRepository.findVisibleToUser(userId);
     }
 
     public void deleteDocument(UUID documentId) {
